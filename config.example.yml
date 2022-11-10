@@ -3,3 +3,19 @@ chains:
   - name: juno
     rpc:
       - http://localhost:26657
+    validator_address: juno1xxxx
+    token:
+      label: "JUNO"
+    notification:
+      minimum_delegation: 10
+
+  - name: evmos
+    rpc:
+      - http://localhost:26657
+    validator_address: evmos1xxxx
+    token:
+      label: "evmos"
+      coefficient: 10000000000000000
+    notification:
+      minimum_delegation: 100
+

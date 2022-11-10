@@ -1,0 +1,5 @@
+---
+chains:
+  - name: juno
+    rpc:
+      - http://localhost:26657

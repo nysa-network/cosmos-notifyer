@@ -1,6 +1,10 @@
 package main
 
+import "github.com/sirupsen/logrus"
+
 type Config struct {
+	LogLevel string `yaml:"log_level"`
+
 	Chains []Chain `yaml:"chains"`
 
 	Notifications struct {
@@ -23,6 +27,19 @@ type Chain struct {
 	Notification struct {
 		MinimumDelegation float64 `yaml:"minimum_delegation"`
 	} `yaml:"notification"`
+}
+
+func (cfg Config) GetLogLevel() logrus.Level {
+	if cfg.LogLevel == "DEBUG" {
+		return logrus.DebugLevel
+	} else if cfg.LogLevel == "INFO" {
+		return logrus.InfoLevel
+	} else if cfg.LogLevel == "WARN" {
+		return logrus.WarnLevel
+	} else if cfg.LogLevel == "ERROR" {
+		return logrus.ErrorLevel
+	}
+	return logrus.InfoLevel
 }
 
 func (c Chain) GetTokenCoefficient() int {

@@ -42,6 +42,7 @@ func (s *service) startWatcher(chain Chain) {
 			ctx = ctxlogger.WithValue(ctx, "rpc", rpc)
 
 			l := ctxlogger.Logger(ctx)
+			l.Logger.SetLevel(s.cfg.GetLogLevel())
 
 			c := cosmosblocks.NewClient(cosmosblocks.Config{
 				RPCEndpoint: rpc,

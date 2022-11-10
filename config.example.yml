@@ -1,4 +1,7 @@
 ---
+# Could be one of "DEBUG", "INFO", "WARN", "ERROR"
+log_level: "INFO"
+
 notifications:
   discord:
     webhook: "https://discord.com/api/webhooks/xxxxxxxxx"

@@ -1,4 +1,8 @@
 ---
+notifications:
+  discord:
+    webhook: "https://discord.com/api/webhooks/xxxxxxxxx"
+
 chains:
   - name: juno
     rpc:

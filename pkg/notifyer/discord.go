@@ -47,7 +47,7 @@ func (c DiscordClient) Delegation(msg DelegationMsg) error {
 
 func (c DiscordClient) UnDelegation(msg UnDelegationMsg) error {
 	username := "cosmos-notifyer"
-	content := fmt.Sprintf(":money_mouth: lost delegation of %v %s", msg.Amount, msg.Token)
+	content := fmt.Sprintf(":money_with_wings: lost delegation of %v %s", msg.Amount, msg.Token)
 
 	message := discordwebhook.Message{
 		Username: &username,

@@ -1,0 +1,7 @@
+version: "3"
+services:
+  cosmosnotifyer:
+    image: ghcr.io/nysa-network/cosmos-notifyer:latest
+    restart: unless-stopped
+    volumes:
+      - ./config.yml:/config.yml

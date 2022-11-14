@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"nysa-network/pkg/cosmosblocks"
 	"nysa-network/pkg/notifyer"
 
+	"github.com/juju/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -44,12 +46,22 @@ func (s *service) startWatcher(chain Chain) {
 			l := ctxlogger.Logger(ctx)
 			l.Logger.SetLevel(s.cfg.GetLogLevel())
 
-			c := cosmosblocks.NewClient(cosmosblocks.Config{
+			c, err := cosmosblocks.NewClient(cosmosblocks.Config{
 				RPCEndpoint: rpc,
 				Logger:      l,
 			})
+			if err != nil {
+				l.WithError(err).Error()
+				cancelFunc()
+				continue
+			}
 
-			go s.blockHandler(ctx, c, chain)
+			go func() {
+				if err := s.blockHandler(ctx, c, chain); err != nil {
+					logrus.WithError(err).Error()
+				}
+				cancelFunc()
+			}()
 
 			if err := c.Start(ctx); err != nil {
 				l.WithError(err).Error()
@@ -60,11 +72,25 @@ func (s *service) startWatcher(chain Chain) {
 
 }
 
-func (s *service) blockHandler(ctx context.Context, c *cosmosblocks.Client, chain Chain) {
+func (s *service) blockHandler(ctx context.Context, c *cosmosblocks.Client, chain Chain) error {
 	l := ctxlogger.Logger(ctx)
 
-	latestBlockTime := time.Now()
-	var latestBlockHeight int64 = 0
+	var (
+		latestBlockTime   time.Time = time.Now()
+		latestBlockHeight int64     = 0
+		missedBlocks      int64     = 0
+		missedBlocksAlert int64     = 10
+	)
+
+	validator, err := c.QueryValidator(chain.ValidatorAddr)
+	if err != nil {
+		return errors.Errorf("failed to get validator: %s", chain.ValidatorAddr)
+	}
+
+	validatorAddr, err := validator.GetAddress()
+	if err != nil {
+		return errors.Errorf("failed to parse validator address: %s", chain.ValidatorAddr)
+	}
 
 	go func(ctx context.Context) {
 		for {
@@ -86,7 +112,7 @@ func (s *service) blockHandler(ctx context.Context, c *cosmosblocks.Client, chai
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			return nil
 		case block, ok := <-c.BlockCh:
 			if !ok {
 				continue
@@ -96,6 +122,32 @@ func (s *service) blockHandler(ctx context.Context, c *cosmosblocks.Client, chai
 				l.Errorf("missed block from %d to %d", latestBlockHeight, block.GetHeight())
 			}
 			latestBlockHeight = block.GetHeight()
+
+			// Check validator signed block
+			if !block.IsValidatorSigned(validatorAddr) {
+				l.Error("Validator didn't signed block")
+				missedBlocks += 1
+				missedBlocksAlert += 150
+				if missedBlocks > missedBlocksAlert {
+					err := s.notify.Alert(notifyer.AlertMsg{
+						Msg: fmt.Sprintf("[%s] %s missed %d blocks",
+							chain.Name, validator.Validator.GetMoniker(), missedBlocks),
+					})
+					if err != nil {
+						l.WithError(err).WithFields(logrus.Fields{
+							"token": chain.Token.Label,
+						}).Error("Failed to send alert message")
+					}
+				}
+			} else {
+				if missedBlocks != 0 {
+					s.notify.Recover(notifyer.RecoverMsg{
+						Msg: fmt.Sprintf("[%s] Signing block again, missed blocks: %d", chain.Name, missedBlocks),
+					})
+				}
+				missedBlocks = 0
+				missedBlocksAlert = 10
+			}
 
 			// Check delegations messages
 			for _, msg := range block.GetMsgDelegate() {

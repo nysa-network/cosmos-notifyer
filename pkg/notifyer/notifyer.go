@@ -57,6 +57,24 @@ func (c Client) Alert(msg AlertMsg) error {
 	return nil
 }
 
+type RecoverMsg struct {
+	Msg string
+}
+
+func (c Client) Recover(msg RecoverMsg) error {
+	var errs error
+
+	if c.discordClient != nil {
+		if err := c.discordClient.Recover(msg); err != nil {
+			errs = errors.Wrap(errs, err)
+		}
+	}
+	if errs != nil {
+		logrus.WithError(errs).Error()
+	}
+	return nil
+}
+
 type DelegationMsg struct {
 	Amount float64
 	Token  string

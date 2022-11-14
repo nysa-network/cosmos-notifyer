@@ -1,6 +1,8 @@
 package cosmosblocks
 
 import (
+	"bytes"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
@@ -12,6 +14,24 @@ type Block struct {
 
 func (b Block) GetHeight() int64 {
 	return b.Event.Block.Height
+}
+
+func (b Block) IsValidatorSigned(valconsAddr []byte) bool {
+	for _, sig := range b.Event.Block.LastCommit.Signatures {
+		if bytes.Equal(sig.ValidatorAddress.Bytes(), valconsAddr) {
+			return true
+		}
+	}
+	return false
+}
+
+func (b Block) GetValidators() ([]*tmtypes.Address, error) {
+	addrs := make([]*tmtypes.Address, 0, len(b.Event.Block.LastCommit.Signatures))
+
+	for _, sig := range b.Event.Block.LastCommit.Signatures {
+		addrs = append(addrs, &sig.ValidatorAddress)
+	}
+	return addrs, nil
 }
 
 func (b Block) GetMsgDelegate() []*MsgDelegate {

@@ -19,7 +19,8 @@ type Client struct {
 
 	BlockCh chan *Block
 
-	ws *libclient.WSClient
+	ws        *libclient.WSClient
+	rpcClient *rpcclient.HTTP
 
 	log *logrus.Entry
 }
@@ -30,7 +31,7 @@ type Config struct {
 	Logger *logrus.Entry
 }
 
-func NewClient(cfg Config) *Client {
+func NewClient(cfg Config) (*Client, error) {
 	c := &Client{
 		Config:  cfg,
 		BlockCh: make(chan *Block, 10),
@@ -40,7 +41,13 @@ func NewClient(cfg Config) *Client {
 	if c.log == nil {
 		c.log = logrus.NewEntry(logrus.New())
 	}
-	return c
+
+	var err error
+	c.rpcClient, err = rpcclient.New(c.RPCEndpoint, "/websocket")
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
+	return c, nil
 }
 
 func (c Client) Start(ctx context.Context) error {
@@ -67,11 +74,6 @@ func (c Client) Start(ctx context.Context) error {
 	}()
 
 	err = wsClient.Subscribe(context.TODO(), `tm.event='NewBlock'`)
-	if err != nil {
-		return errors.Trace(err)
-	}
-
-	rpchttp, err := rpcclient.New(c.RPCEndpoint, "/websocket")
 	if err != nil {
 		return errors.Trace(err)
 	}
@@ -132,11 +134,11 @@ func (c Client) Start(ctx context.Context) error {
 			for _, blockTX := range eventBlock.Block.Data.Txs {
 				time.Sleep(time.Second / 4)
 
-				res, err := rpchttp.Tx(context.Background(), blockTX.Hash(), true)
+				res, err := c.rpcClient.Tx(context.Background(), blockTX.Hash(), true)
 				if err != nil {
 					// just wait and retry once
 					time.Sleep(time.Second / 4)
-					res, err = rpchttp.Tx(context.Background(), blockTX.Hash(), true)
+					res, err = c.rpcClient.Tx(context.Background(), blockTX.Hash(), true)
 					if err != nil {
 						l.WithError(err).Errorf("Fail to parse tx: %s", blockTX.String())
 						continue

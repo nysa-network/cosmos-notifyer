@@ -1,10 +1,7 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"net/http"
-	_ "net/http/pprof"
 	"os"
 
 	"nysa-network/pkg/notifyer"
@@ -32,9 +29,6 @@ func (s *service) parseConfig(c *cli.Context) error {
 }
 
 func main() {
-	go func() {
-		fmt.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
 	s := service{}
 
 	globalFlags := []cli.Flag{

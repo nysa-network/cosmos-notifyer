@@ -140,7 +140,7 @@ func (s *service) blockHandler(ctx context.Context, c *cosmosblocks.Client, chai
 					}
 				}
 			} else {
-				if missedBlocks != 0 {
+				if missedBlocks != 0 && missedBlocks < missedBlocksAlert {
 					s.notify.Recover(notifyer.RecoverMsg{
 						Msg: fmt.Sprintf("[%s] Signing block again, missed blocks: %d", chain.Name, missedBlocks),
 					})

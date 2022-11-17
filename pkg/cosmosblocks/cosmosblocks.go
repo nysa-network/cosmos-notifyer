@@ -9,6 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	rpcclient "github.com/tendermint/tendermint/rpc/client/http"
+	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	libclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
 	tmtypes "github.com/tendermint/tendermint/types"
@@ -50,6 +51,14 @@ func NewClient(cfg Config) (*Client, error) {
 	return c, nil
 }
 
+func (c Client) Health(ctx context.Context) (*coretypes.ResultHealth, error) {
+	return c.rpcClient.Health(ctx)
+}
+
+func (c Client) Status(ctx context.Context) (*coretypes.ResultStatus, error) {
+	return c.rpcClient.Status(ctx)
+}
+
 func (c Client) Start(ctx context.Context) error {
 	wsClient, err := libclient.NewWS(c.RPCEndpoint, "/websocket",
 		libclient.MaxReconnectAttempts(256),
@@ -80,14 +89,6 @@ func (c Client) Start(ctx context.Context) error {
 
 	latestBlockTime := time.Now()
 	checkTime := time.Second * 45
-	// go func() {
-	// 	for {
-	// 		if time.Since(latestBlockTime) > time.Second*45 {
-	// 			c.log.Error("No block receive from tendermint since more than 45s")
-	// 		}
-	// 		time.Sleep(time.Second * 5)
-	// 	}
-	// }()
 
 	c.log.Info("Start listening blocks...")
 

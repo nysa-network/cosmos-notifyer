@@ -36,7 +36,15 @@ func (s *service) Start(cctx *cli.Context) error {
 }
 
 func (s *service) startWatcher(chain Chain) {
+	var (
+		startTime           time.Time
+		lastRPCAlertFiredAt time.Time
+	)
+
 	for {
+		startTime = time.Now()
+
+		// Loop over all RPCs
 		for _, rpc := range chain.RPC {
 			ctx, cancelFunc := context.WithCancel(context.Background())
 
@@ -56,17 +64,55 @@ func (s *service) startWatcher(chain Chain) {
 				continue
 			}
 
+			status, err := c.Status(ctx)
+			if err != nil {
+				l.WithError(err).Error()
+				cancelFunc()
+				continue
+			} else if status.SyncInfo.CatchingUp {
+				l.Error("node is catching-up...")
+				cancelFunc()
+				continue
+			}
+
 			go func() {
 				if err := s.blockHandler(ctx, c, chain); err != nil {
 					logrus.WithError(err).Error()
 				}
-				cancelFunc()
 			}()
 
 			if err := c.Start(ctx); err != nil {
 				l.WithError(err).Error()
 			}
 			cancelFunc()
+		}
+
+		// If we're here, a RPC has failed
+		if time.Since(startTime) < time.Second*60 && time.Since(lastRPCAlertFiredAt) > time.Hour*4 {
+			lastRPCAlertFiredAt = time.Now()
+
+			err := s.notify.Alert(notifyer.AlertMsg{
+				Msg: fmt.Sprintf("[%s] RPCs are down", chain.Name),
+			})
+			if err != nil {
+				logrus.WithError(err).Error("Failed to send alert message: RPC is down")
+			}
+
+			go func() {
+				for {
+					if time.Since(startTime) > time.Second*60*5 {
+						err := s.notify.Recover(notifyer.RecoverMsg{
+							Msg: fmt.Sprintf("[%s] RPCs are back up!", chain.Name),
+						})
+						if err != nil {
+							logrus.WithError(err).Error("Failed to send recover message: RPC is up")
+						}
+						return
+					}
+					time.Sleep(time.Second * 5)
+				}
+
+			}()
 		}
 	}
 
@@ -112,6 +158,9 @@ func (s *service) blockHandler(ctx context.Context, c *cosmosblocks.Client, chai
 	for {
 		select {
 		case <-ctx.Done():
+			if latestBlockHeight == 0 {
+				return errors.Errorf("no blocks received")
+			}
 			return nil
 		case block, ok := <-c.BlockCh:
 			if !ok {

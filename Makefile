@@ -2,6 +2,9 @@
 build:
 	go build ./cmd/cosmos-notifyer
 
+run: build
+	./cosmos-notifyer start
+
 docker-deploy: docker-build docker-push
 
 docker-build:

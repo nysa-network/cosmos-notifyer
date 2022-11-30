@@ -9,6 +9,7 @@ Cosmos notifyer is an alerting and informing tool for cosmos-sdk based chain
 
 - [x] New :moneybag: & Lost :money_with_wings: delegations
 - [x] Missing blocks and recovery
+- [ ] New proposals
 - [ ] RPCs are down
 
 * Cosmos-notifyer can send alert into 

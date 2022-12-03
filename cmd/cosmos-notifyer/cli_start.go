@@ -176,8 +176,8 @@ func (s *service) blockHandler(ctx context.Context, c *cosmosblocks.Client, chai
 			if !block.IsValidatorSigned(validatorAddr) {
 				l.Error("Validator didn't signed block")
 				missedBlocks += 1
-				missedBlocksAlert += 150
 				if missedBlocks > missedBlocksAlert {
+					missedBlocksAlert += 150
 					err := s.notify.Alert(notifyer.AlertMsg{
 						Msg: fmt.Sprintf("[%s] %s missed %d blocks",
 							chain.Name, validator.Validator.GetMoniker(), missedBlocks),
@@ -189,7 +189,7 @@ func (s *service) blockHandler(ctx context.Context, c *cosmosblocks.Client, chai
 					}
 				}
 			} else {
-				if missedBlocks != 0 && missedBlocks > missedBlocksAlert {
+				if missedBlocks > 0 && missedBlocks > missedBlocksAlert {
 					s.notify.Recover(notifyer.RecoverMsg{
 						Msg: fmt.Sprintf("[%s] Signing block again, missed blocks: %d", chain.Name, missedBlocks),
 					})

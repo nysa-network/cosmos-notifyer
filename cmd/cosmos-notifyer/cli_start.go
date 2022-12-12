@@ -133,6 +133,13 @@ func (s *service) blockHandler(ctx context.Context, c *cosmosblocks.Client, chai
 		return errors.Errorf("failed to get validator: %s", chain.ValidatorAddr)
 	}
 
+	if validator.Validator.IsJailed() {
+		s.notify.Alert(notifyer.AlertMsg{
+			Msg: fmt.Sprintf("[%s] %s is jailed",
+				chain.Name, validator.Validator.GetMoniker()),
+		})
+	}
+
 	validatorAddr, err := validator.GetAddress()
 	if err != nil {
 		return errors.Errorf("failed to parse validator address: %s", chain.ValidatorAddr)

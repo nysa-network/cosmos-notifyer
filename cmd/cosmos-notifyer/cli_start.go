@@ -205,7 +205,7 @@ START:
 					}
 				}
 			} else {
-				if missedBlocks > 0 && missedBlocks > missedBlocksAlert {
+				if missedBlocks > 0 && missedBlocks > missedBlocksAlert-150 {
 					s.notify.Recover(notifyer.RecoverMsg{
 						Msg: fmt.Sprintf("[%s] Signing block again, missed blocks: %d", chain.Name, missedBlocks),
 					})

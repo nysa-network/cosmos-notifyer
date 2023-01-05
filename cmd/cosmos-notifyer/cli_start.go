@@ -96,11 +96,15 @@ func (s *service) startWatcher(chain Chain, rpc string) error {
 func (s *service) blockHandler(ctx context.Context, c *cosmosblocks.Client, chain Chain) error {
 	l := ctxlogger.Logger(ctx)
 
+	const (
+		missedBlocksAlertInit = 10
+	)
+
 	var (
 		latestBlockTime   time.Time = time.Now()
 		latestBlockHeight int64     = 0
 		missedBlocks      int64     = 0
-		missedBlocksAlert int64     = 10
+		missedBlocksAlert int64     = missedBlocksAlertInit
 
 		isJailed bool = false
 		isBonded bool = true
@@ -192,10 +196,11 @@ START:
 			if !block.IsValidatorSigned(validatorAddr) {
 				l.Error("Validator didn't signed block")
 				missedBlocks += 1
-				if missedBlocks > missedBlocksAlert {
+
+				if missedBlocks >= missedBlocksAlert {
 					missedBlocksAlert += 150
 					err := s.notify.Alert(notifyer.AlertMsg{
-						Msg: fmt.Sprintf("[%s] %s missed %d blocks",
+						Msg: fmt.Sprintf("[%s] %s Not signing blocs... %d blocks",
 							chain.Name, validator.Validator.GetMoniker(), missedBlocks),
 					})
 					if err != nil {
@@ -205,13 +210,14 @@ START:
 					}
 				}
 			} else {
-				if missedBlocks > 0 && missedBlocks > missedBlocksAlert-150 {
+				if missedBlocks > missedBlocksAlertInit {
 					s.notify.Recover(notifyer.RecoverMsg{
-						Msg: fmt.Sprintf("[%s] Signing block again, missed blocks: %d", chain.Name, missedBlocks),
+						Msg: fmt.Sprintf("[%s] %s Signing block again, missed blocks: %d",
+							chain.Name, validator.Validator.GetMoniker(), missedBlocks),
 					})
 				}
 				missedBlocks = 0
-				missedBlocksAlert = 10
+				missedBlocksAlert = missedBlocksAlertInit
 			}
 
 			// Check delegations messages

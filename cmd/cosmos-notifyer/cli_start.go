@@ -47,6 +47,7 @@ func (s *service) Start(cctx *cli.Context) error {
 					s.notify.Recover(notifyer.RecoverMsg{
 						Msg: fmt.Sprintf("[%s] RPCs are back up ! ", chain.Name),
 					})
+					activeRPC = true
 				}
 
 				// Start watching
